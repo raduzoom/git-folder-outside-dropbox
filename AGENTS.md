@@ -7,7 +7,7 @@ Keeps each Dropbox project's git data per Mac, outside Dropbox. A converted proj
 
 ## Commands
 
-Run from the `projects` folder (this Mac: `~/Dropbox/hosts/devsite/projects`; Mac mini: `/Volumes/T7/Dropbox/hosts/devsite/projects`):
+Run from the `projects` folder (`~/Dropbox/hosts/devsite/projects`, or wherever Dropbox is on that Mac):
 
 | Command | What it does |
 |---|---|
@@ -21,20 +21,17 @@ Run from the `projects` folder (this Mac: `~/Dropbox/hosts/devsite/projects`; Ma
 
 Never use VS Code's Pull / Sync Changes to catch a converted project up: Dropbox already delivered the files, so a pull trips over them. Use `git-sync sync`.
 
-## The two Macs
+## The Macs
 
-- **This Mac (MacBook Pro):** Dropbox at `~/Dropbox`.
-- **Mac mini:** Dropbox at `/Volumes/T7/Dropbox` (external T7 drive; must be mounted for `sync`). Give it commands with that path, not `~/Dropbox`.
-- Both use the username `raduh`; pointer files hold the absolute `/Users/raduh/...` path, so a Mac with another username cannot use them.
-- **SSH on the Mac mini:** plain `github.com` logs in as the `raduzoom-hd` account, which cannot see the `raduzoom` repos. Every repo must use the `github-personal` alias. `~/.ssh/id_github` there had to be `chmod 600` (it was 0644 and ssh ignored it).
+Each Mac's Dropbox path, username and SSH setup: [macs.md](macs.md) (local only, gitignored). Read it before giving the user a command for another Mac.
 
 ## Converting a repo (the procedure that worked)
 
-1. If its remote is `git@github.com:raduzoom/...`, check `git ls-remote --heads git@github-personal:raduzoom/<repo>.git` answers, then `git -C <repo> remote set-url origin git@github-personal:raduzoom/<repo>.git`. The `.git` folder is still Dropbox-synced at this point, so the Mac mini receives the change.
+1. If its remote is `git@github.com:raduzoom/...`, check `git ls-remote --heads git@github-personal:raduzoom/<repo>.git` answers, then `git -C <repo> remote set-url origin git@github-personal:raduzoom/<repo>.git`. The `.git` folder is still Dropbox-synced at this point, so the other Macs receive the change.
 2. On this Mac: `./git-sync/git-sync status <repo> --fetch`. UNPUSHED must be 0; push first (with the user's yes) if not.
-3. On the Mac mini: the same command. UNPUSHED 0 and the UNCOMMITTED count should match this Mac. If the counts differ, Dropbox is still syncing that project: hold it back.
+3. On each other Mac: the same command. UNPUSHED 0 and the UNCOMMITTED count should match this Mac. If the counts differ, Dropbox is still syncing that project: hold it back.
 4. On this Mac: `./git-sync/git-sync add <repo>` (ask the user before each conversion).
-5. On the Mac mini: `./git-sync/git-sync sync-all`; the repo should print `rebuilt on main` and show `ready`.
+5. On each other Mac: `./git-sync/git-sync sync-all`; the repo should print `rebuilt on main` and show `ready`.
 
 ## Open work
 
