@@ -1,0 +1,39 @@
+#!/bin/bash
+# git-sync: keep each Dropbox project's git data per Mac, outside Dropbox.
+
+gs__self="${BASH_SOURCE[0]}"
+while [ -L "$gs__self" ]; do
+  gs__dir="$(cd "$(dirname "$gs__self")" && pwd)"
+  gs__self="$(readlink "$gs__self")"
+  case "$gs__self" in /*) ;; *) gs__self="$gs__dir/$gs__self" ;; esac
+done
+GS_ROOT="$(cd "$(dirname "$gs__self")" && pwd -P)"
+
+for gs__lib in "$GS_ROOT"/lib/*.sh; do
+  [ -f "$gs__lib" ] && source "$gs__lib"
+done
+
+gs_usage() {
+  echo "usage: git-sync <status|scan|add|remove|sync|sync-all> [args]" >&2
+  exit 1
+}
+
+main() {
+  local cmd="${1:-}" fn
+  [ -n "$cmd" ] || gs_usage
+  shift
+  case "$cmd" in
+    _call)
+      [ -n "${1:-}" ] || gs_usage
+      "$@"
+      ;;
+    status|scan|add|remove|sync|sync-all)
+      fn="cmd_${cmd//-/_}"
+      type "$fn" >/dev/null 2>&1 || gs_die "command not implemented yet: $cmd"
+      "$fn" "$@"
+      ;;
+    *) gs_usage ;;
+  esac
+}
+
+main "$@"

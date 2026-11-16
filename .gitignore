@@ -1,0 +1,8 @@
+# Personal data, kept local
+repos.json
+state/
+action-items.md
+
+# IDE
+.idea/
+.DS_Store

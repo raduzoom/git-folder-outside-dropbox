@@ -1,0 +1,160 @@
+#!/bin/bash
+# git-sync-agent: run `git-sync sync-all` in the background on this Mac, at login and every
+# 15 minutes (macOS runs a missed interval once after wake).
+#
+#   git-sync-agent install     write the LaunchAgent for this Mac and start it
+#   git-sync-agent uninstall   stop it and move the LaunchAgent file to the Trash
+#   git-sync-agent status      show whether it is loaded, and the end of the log
+#   git-sync-agent run         one sync-all, logged; what the LaunchAgent calls
+#   git-sync-agent plist       print the LaunchAgent file (used by install)
+#
+# Each Mac installs its own agent, since the Dropbox folder (and so this script's path)
+# can differ between Macs. Nothing here commits, pulls, merges or pushes; sync-all only
+# rebuilds git data and moves branches forward, as when run by hand.
+
+LABEL="com.git-sync.agent"
+INTERVAL=900
+LOG_MAX_BYTES=1048576
+LOG_KEEP_LINES=3000
+
+self="${BASH_SOURCE[0]}"
+while [ -L "$self" ]; do
+  dir="$(cd "$(dirname "$self")" && pwd)"
+  self="$(readlink "$self")"
+  case "$self" in /*) ;; *) self="$dir/$self" ;; esac
+done
+ROOT="$(cd "$(dirname "$self")" && pwd -P)"
+AGENT="$ROOT/git-sync-agent"
+LOG="${GIT_SYNC_AGENT_LOG:-$HOME/Library/Logs/git-sync.log}"
+STATE_DIR="${GIT_SYNC_HOME:-$HOME/.git-sync}"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+DOMAIN="gui/$(id -u)"
+
+usage() {
+  echo "usage: git-sync-agent <install|uninstall|status|run>" >&2
+  exit 1
+}
+
+# Show a macOS notification (overridable for tests).
+notify() {
+  if [ -n "${GIT_SYNC_AGENT_NOTIFY:-}" ]; then
+    "$GIT_SYNC_AGENT_NOTIFY" "$1"
+  else
+    osascript -e 'on run argv' -e 'display notification (item 1 of argv) with title "git-sync"' -e 'end run' "$1" >/dev/null 2>&1
+  fi
+}
+
+# Keep the log under LOG_MAX_BYTES by keeping only its last LOG_KEEP_LINES lines.
+trim_log() {
+  local size
+  size="$(wc -c < "$LOG" 2>/dev/null | tr -d ' ')"
+  [ -n "$size" ] && [ "$size" -gt "$LOG_MAX_BYTES" ] || return 0
+  tail -n "$LOG_KEEP_LINES" "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+}
+
+cmd_run() {
+  local out rc problem last_file last=""
+  mkdir -p "$(dirname "$LOG")" "$STATE_DIR"
+  # No terminal here, so ssh must never wait for a passphrase or a host-key answer.
+  export GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh -o ConnectTimeout=10 -o BatchMode=yes}"
+  out="$("$ROOT/git-sync" sync-all 2>&1)"
+  rc=$?
+  { printf '=== %s  rc=%s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$rc"; printf '%s\n' "$out"; } >> "$LOG"
+  trim_log
+
+  # Notify once per distinct problem: an unpushed-work warning, a diverged branch, a
+  # failed project, or a git-sync error. A clean run forgets the last problem.
+  problem="$(printf '%s\n' "$out" | grep -E 'WARNING:|diverged|projects failed|^git-sync: ' | head -n 3 | paste -sd ';' - | cut -c 1-240)"
+  last_file="$STATE_DIR/agent-last-problem"
+  [ -f "$last_file" ] && last="$(cat "$last_file")"
+  if [ -z "$problem" ]; then
+    [ -n "$last" ] && : > "$last_file"
+  elif [ "$problem" != "$last" ]; then
+    printf '%s\n' "$problem" > "$last_file"
+    notify "$problem"
+  fi
+  return "$rc"
+}
+
+xml_escape() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+
+cmd_plist() {
+  local agent log
+  agent="$(xml_escape "$AGENT")"
+  log="$(xml_escape "$LOG")"
+  cat <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>$agent</string>
+    <string>run</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StartInterval</key>
+  <integer>$INTERVAL</integer>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>LowPriorityIO</key>
+  <true/>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>$log</string>
+  <key>StandardErrorPath</key>
+  <string>$log</string>
+</dict>
+</plist>
+PLIST
+}
+
+cmd_install() {
+  local tmp
+  mkdir -p "$(dirname "$PLIST")" "$(dirname "$LOG")" || exit 1
+  tmp="$PLIST.tmp.$$"
+  cmd_plist > "$tmp" && plutil -lint -s "$tmp" || { echo "git-sync-agent: could not write $PLIST" >&2; exit 1; }
+  mv "$tmp" "$PLIST" || exit 1
+  launchctl bootout "$DOMAIN/$LABEL" >/dev/null 2>&1
+  launchctl bootstrap "$DOMAIN" "$PLIST" || { echo "git-sync-agent: launchctl could not load $PLIST" >&2; exit 1; }
+  echo "installed: sync-all runs now, at login and every $((INTERVAL / 60)) minutes"
+  echo "log: $LOG"
+}
+
+cmd_uninstall() {
+  launchctl bootout "$DOMAIN/$LABEL" >/dev/null 2>&1
+  if [ -e "$PLIST" ]; then
+    trash "$PLIST" || { echo "git-sync-agent: could not move $PLIST to the Trash" >&2; exit 1; }
+  fi
+  echo "uninstalled: the agent is stopped and its LaunchAgent file is in the Trash"
+}
+
+cmd_status() {
+  if launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1; then
+    echo "loaded: $LABEL"
+    launchctl print "$DOMAIN/$LABEL" | grep -E '^\s*(state|last exit code|run interval) =' | sed 's/^[[:space:]]*/  /'
+  else
+    echo "not loaded: run git-sync-agent install"
+  fi
+  if [ -f "$LOG" ]; then
+    echo "--- last run ($LOG):"
+    awk '/^=== /{buf=""} {buf = buf $0 "\n"} END{printf "%s", buf}' "$LOG"
+  fi
+}
+
+case "${1:-}" in
+  run) cmd_run ;;
+  install) cmd_install ;;
+  uninstall) cmd_uninstall ;;
+  status) cmd_status ;;
+  plist) cmd_plist ;;
+  *) usage ;;
+esac
