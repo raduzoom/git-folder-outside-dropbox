@@ -4,7 +4,7 @@ Keeps each Dropbox project's git data per Mac, outside Dropbox. A converted proj
 
 ## Commands
 
-Run from the `projects` folder (this Mac: `~/Dropbox/hosts/devsite/projects`; Mac mini: `/Volumes/T7/Dropbox/hosts/devsite/projects`). The command comes first, then the path:
+Run from the `projects` folder (`~/Dropbox/hosts/devsite/projects`, or wherever Dropbox is on that Mac). The command comes first, then the path:
 
 | Command | What it does |
 |---|---|
@@ -23,16 +23,8 @@ Never use VS Code's Pull / Sync Changes to catch a converted project up. Use `gi
 
 A LaunchAgent runs `sync-all` at login and every 15 minutes. Install it once on each Mac.
 
-This Mac:
-
 ```bash
 cd ~/Dropbox/hosts/devsite/projects && ./git-sync/git-sync-agent install
-```
-
-Mac mini:
-
-```bash
-cd /Volumes/T7/Dropbox/hosts/devsite/projects && ./git-sync/git-sync-agent install
 ```
 
 | Command | What it does |
