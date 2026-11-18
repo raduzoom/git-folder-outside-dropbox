@@ -2,6 +2,9 @@
 
 Status: approved by Radu on 2026-11-12. Nothing is built yet.
 
+Proposed amendment (2026-11-18, not approved): [unpushed-bundles.md](unpushed-bundles.md)
+carries a Mac's unpushed commits to the other Macs through Dropbox and adds `git-sync adopt`.
+
 ## Why
 
 The same Dropbox projects are used from more than one Mac. Dropbox syncs each

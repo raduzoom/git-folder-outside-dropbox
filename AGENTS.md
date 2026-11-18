@@ -4,6 +4,7 @@ Keeps each Dropbox project's git data per Mac, outside Dropbox. A converted proj
 
 - Design (the binding authority): [plans/git-sync-design.md](plans/git-sync-design.md)
 - Implementation plan and phases: [plans/git-sync.md](plans/git-sync.md)
+- Proposed, not approved: carrying unpushed commits between Macs as Dropbox bundles, plus `git-sync adopt` ([plans/unpushed-bundles.md](plans/unpushed-bundles.md))
 
 ## Commands
 
@@ -21,6 +22,8 @@ Run from the `projects` folder (`~/Dropbox/hosts/devsite/projects`, or wherever 
 
 Never use VS Code's Pull / Sync Changes to catch a converted project up: Dropbox already delivered the files, so a pull trips over them. Use `git-sync sync`.
 
+To make VS Code run `git-sync sync` for a project whenever its folder opens, use the `vscode-sync-on-open` skill ([.claude/skills/vscode-sync-on-open/SKILL.md](.claude/skills/vscode-sync-on-open/SKILL.md)).
+
 ## The Macs
 
 Each Mac's Dropbox path, username and SSH setup: [macs.md](macs.md) (local only, gitignored). Read it before giving the user a command for another Mac.
@@ -32,6 +35,7 @@ Each Mac's Dropbox path, username and SSH setup: [macs.md](macs.md) (local only,
 3. On each other Mac: the same command. UNPUSHED 0 and the UNCOMMITTED count should match this Mac. If the counts differ, Dropbox is still syncing that project: hold it back.
 4. On this Mac: `./git-sync/git-sync add <repo>` (ask the user before each conversion).
 5. On each other Mac: `./git-sync/git-sync sync-all`; the repo should print `rebuilt on main` and show `ready`.
+6. Once the repo shows `ready` on this Mac, ask the user whether to add the VS Code sync-on-open task to it (the `vscode-sync-on-open` skill). Add it only on a yes.
 
 ## Open work
 
