@@ -2,7 +2,7 @@
 
 Status: approved by Radu on 2026-11-12. Nothing is built yet.
 
-Proposed amendment (2026-11-18, not approved): [unpushed-bundles.md](unpushed-bundles.md)
+Amendment (approved and built 2026-11-18): [unpushed-bundles.md](unpushed-bundles.md)
 carries a Mac's unpushed commits to the other Macs through Dropbox and adds `git-sync adopt`.
 
 ## Why
@@ -165,6 +165,7 @@ git-sync add --all <folder>
 git-sync remove <path>
 git-sync sync <path>
 git-sync sync-all
+git-sync adopt <path> [--force]
 ```
 
 **status** prints one row per project in the database (or per given path). It

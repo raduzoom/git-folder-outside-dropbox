@@ -20,10 +20,19 @@ sync__fail_build() {
 }
 
 # Print the unpushed-work warning for another Mac's record, if there is one.
+# Bring in the other Mac's bundle first, so its commits can be offered for adopt.
 sync__warn_other() {
-  local id="$1" abs="$2" note
-  note="$(repo_other_mac_note "$id" "$abs" fetched)" || exit 1
-  [ -z "$note" ] || sync__say "$id" "WARNING: $note. Push from there before committing here."
+  local id="$1" abs="$2" st name branch short
+  bundle_fetch_other "$id" "$abs"
+  st="$(repo_other_mac_state "$id" "$abs" fetched)" || exit 1
+  [ -n "$st" ] || return 0
+  name="$(gs__field "$st" 2)"; branch="$(gs__field "$st" 3)"; short="$(gs__field "$st" 4)"
+  case "$(gs__field "$st" 1)" in
+    adoptable) sync__say "$id" "WARNING: $name has unpushed work on $branch ($short); its commits are here: run git-sync adopt $(add__shquote "$abs"), then push." ;;
+    superseded) sync__say "$id" "$name's $short is already on the remote under another commit" ;;
+    adopted) ;;
+    *) sync__say "$id" "WARNING: $name has unpushed work on $branch ($short). Push from there before committing here." ;;
+  esac
   return 0
 }
 
@@ -255,7 +264,11 @@ sync_catch_up() {
     elif [ "$behind" = 0 ]; then
       msg="${msg:+$msg; }$ahead unpushed commits"
     else
-      msg="${msg:+$msg; }diverged: $ahead ahead, $behind behind; nothing changed"
+      if repo_changes_on "$abs" HEAD "refs/remotes/origin/$b"; then
+        msg="${msg:+$msg; }diverged, but the remote already has these changes: git reset origin/$b drops the local commits, files untouched"
+      else
+        msg="${msg:+$msg; }diverged: $ahead ahead, $behind behind; nothing changed"
+      fi
     fi
   fi
   head="$(repo_head "$abs")"

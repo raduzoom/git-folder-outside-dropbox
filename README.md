@@ -14,6 +14,7 @@ Run from the `projects` folder (`~/Dropbox/hosts/devsite/projects`, or wherever 
 | `./git-sync/git-sync remove <path>` | Undo `add`: git data back to a normal `.git` folder. |
 | `./git-sync/git-sync sync <path>` | Rebuild missing git data, or catch up with the remote. Never commits, pulls, merges or pushes. |
 | `./git-sync/git-sync sync-all` | `sync` for every registered project, then the status table. |
+| `./git-sync/git-sync adopt <path>` | Take over another Mac's unpushed commits so you can push them from here. `sync` says when it is possible. |
 
 Example: `./git-sync/git-sync sync feather-note/apple`
 

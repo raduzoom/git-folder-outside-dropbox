@@ -4,7 +4,7 @@ Keeps each Dropbox project's git data per Mac, outside Dropbox. A converted proj
 
 - Design (the binding authority): [plans/git-sync-design.md](plans/git-sync-design.md)
 - Implementation plan and phases: [plans/git-sync.md](plans/git-sync.md)
-- Proposed, not approved: carrying unpushed commits between Macs as Dropbox bundles, plus `git-sync adopt` ([plans/unpushed-bundles.md](plans/unpushed-bundles.md))
+- Carrying unpushed commits between Macs as Dropbox bundles, and `git-sync adopt`: [plans/unpushed-bundles.md](plans/unpushed-bundles.md)
 
 ## Commands
 
@@ -18,6 +18,7 @@ Run from the `projects` folder (`~/Dropbox/hosts/devsite/projects`, or wherever 
 | `./git-sync/git-sync remove <path>` | Undo `add`: git data back to a normal `.git` folder. |
 | `./git-sync/git-sync sync <path>` | Rebuild missing git data, or catch up with the remote. Never commits, pulls, merges or pushes. |
 | `./git-sync/git-sync sync-all` | `sync` for every registered project, then the status table. |
+| `./git-sync/git-sync adopt <path> [--force]` | Move this Mac's branch onto another Mac's unpushed commits (carried as a bundle in `state/bundles/`), so they can be pushed from here. Files untouched; refuses unless the files here match. |
 | `./git-sync/git-sync-agent install\|uninstall\|status\|run` | Optional per-Mac LaunchAgent: `sync-all` at login and every 15 min, log at `~/Library/Logs/git-sync.log`. |
 
 Never use VS Code's Pull / Sync Changes to catch a converted project up: Dropbox already delivered the files, so a pull trips over them. Use `git-sync sync`.
@@ -46,7 +47,7 @@ Keep this file lean: it is read every session. Status, action items, progress an
 ## Working on the code
 
 - Tests: `bash tests/run.sh` (all), `bash tests/run.sh <filter>` (substring of a test or file name). Each test runs in a temp sandbox; never point tests at real projects or `~/.git-sync`.
-- Overrides used by tests: `GIT_SYNC_DROPBOX`, `GIT_SYNC_HOME`, `GIT_SYNC_DATA`, `GIT_SYNC_MAC_NAME`, `GIT_SYNC_TRASH` (default `trash`), and for the agent `GIT_SYNC_AGENT_LOG`, `GIT_SYNC_AGENT_NOTIFY`.
+- Overrides used by tests: `GIT_SYNC_DROPBOX`, `GIT_SYNC_HOME`, `GIT_SYNC_DATA`, `GIT_SYNC_MAC_NAME`, `GIT_SYNC_TRASH` (default `trash`), `GIT_SYNC_BUNDLE_MAX` (bytes, default 25 MB; `0` turns bundles off), and for the agent `GIT_SYNC_AGENT_LOG`, `GIT_SYNC_AGENT_NOTIFY`.
 - `git-sync _call <function> [args]` calls one library function (for tests and checks).
 - Rules: bash 3.2 (`/bin/bash`); never `rm`/`rmdir`/`unlink` (removals go through `$GIT_SYNC_TRASH`); never change a working file (the only project file written is `.git`); never `echo "$(cmd)"` or `local x="$(cmd)"` where cmd can fail; run `db__check` before any `db_id_by_path` lookup.
 - A conflicted copy of a ref file makes `git rev-list --all` / `--branches` fail with "bad object"; name real refs explicitly when inspecting such a repo.

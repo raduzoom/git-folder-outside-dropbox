@@ -1,7 +1,20 @@
 # Carrying unpushed commits between Macs
 
-Status: proposed 2026-11-18, not approved. When approved, it amends
-[git-sync-design.md](git-sync-design.md). Until then the design doc wins.
+Status: approved and built 2026-11-18 (parts 1 to 4). It amends
+[git-sync-design.md](git-sync-design.md). Code: `lib/bundle.sh`, tests: `tests/test_bundle.sh`.
+
+## As built: where it differs from the proposal below
+
+- **No `bundle` field in the state record.** Readers trust a bundle only when its tip equals the
+  head the Mac's existing record names, which already covers stale and half-synced files. So the
+  record format is unchanged.
+- **No "(too large to carry)" note.** A bundle over the cap is simply not kept, and the other Macs
+  show the plain warning. `GIT_SYNC_BUNDLE_MAX=0` turns bundles off.
+- **The bundle is written right after the record**, not before it. Order doesn't matter because of
+  the tip check.
+- **`state_latest_other`** prints a fifth field, the other Mac's id, so the reader can find its
+  bundle folder.
+- **Decided by Radu:** `adopt` stays a separate command; `sync` never adopts on its own.
 
 ## Why
 
@@ -197,12 +210,8 @@ It adds one more check, reported only and done locally after a fetch.
 
 ## Open questions for Radu
 
-- Should `adopt` stay a separate command, or should `sync` do it on its own
-  when the files check passes? The recommendation is to keep it separate:
-  sync stays predictable, and adopting is a choice to take over another Mac's
-  commit.
 - Is a 25 MB cap right?
-- Should `sync-all` print one summary line listing the adoptable projects?
+- Should `sync-all` print one summary line listing the adoptable projects? (Not built.)
 
 ## Tests (sandbox, two Macs as in the existing sync tests)
 

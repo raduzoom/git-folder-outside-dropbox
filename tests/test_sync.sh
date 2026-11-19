@@ -120,6 +120,7 @@ test_does_not_follow_when_local_has_unpushed() {
   gs sync "$P/demo"; assert_not_contains "$OUT" "switched"
 }
 test_warns_when_other_mac_has_unpushed_commit() {
+  export GIT_SYNC_BUNDLE_MAX=0   # the no-bundle path; bundles are covered in test_bundle.sh
   both_macs_ready; ( cd "$P/demo" && echo x >> a.txt && git commit -qam unpushed ); gs status; use_mac b
   gs sync "$P/demo"; assert_contains "$OUT" "WARNING: Mac A has unpushed work on main"
   gs status; assert_contains "$OUT" "Mac A is on a commit not fetched here"

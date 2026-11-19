@@ -172,27 +172,56 @@ gs__field() {
   printf '%s' "$1" | awk -F'\t' -v n="$2" '{ print $n }'
 }
 
-# repo_other_mac_note <id> <abs> [fetched]: print "<Mac> has unpushed work on <branch> (<7-char id>)"
-# when the latest record from another Mac names a branch or commit that is not on the remote. Local
-# data only. A commit this repo does not know is "not fetched here", unless the caller has just
-# fetched (second argument "fetched"): then it really is on no remote, so it is unpushed work.
-repo_other_mac_note() {
-  local id="$1" abs="$2" fetched="${3:-}" other name branch head
+# repo_other_mac_state <id> <abs> [fetched]: print "<kind>\t<Mac>\t<branch>\t<7-char id>" for the
+# latest record from another Mac, or nothing when that record is on the remote. Local data only.
+# Kinds: notfetched (a commit this repo does not know, and the caller has not just fetched),
+# unpushed, adoptable (its commits are here and this Mac's branch can move forward onto them),
+# adopted (this Mac's branch contains them; not pushed yet), superseded (the remote already has
+# every file it changed, under another commit).
+repo_other_mac_state() {
+  local id="$1" abs="$2" fetched="${3:-}" other name branch head short kind cur
   other="$(state_latest_other "$id")" || return 1
   [ -n "$other" ] || return 0
   name="$(gs__field "$other" 1)"
   branch="$(gs__field "$other" 2)"
   head="$(gs__field "$other" 3)"
   [ -n "$branch" ] && [ -n "$head" ] || return 0
-  if [ "$fetched" != fetched ] && ! gs__git "$abs" cat-file -e "$head^{commit}"; then
-    printf '%s is on a commit not fetched here (%s); run: git-sync sync\n' "$name" "$(printf '%s' "$head" | cut -c1-7)"
-    return 0
-  fi
-  if [ "$branch" = "(detached)" ]; then
+  short="$(printf '%s' "$head" | cut -c1-7)"
+  if ! gs__git "$abs" cat-file -e "$head^{commit}"; then
+    if [ "$fetched" != fetched ]; then kind=notfetched; else kind=unpushed; fi
+  elif [ "$branch" = "(detached)" ]; then
     repo_commit_on_remote "$abs" "$head" && return 0
-  elif gs__git "$abs" rev-parse --verify -q "refs/remotes/origin/$branch" >/dev/null && repo_commit_on_remote "$abs" "$head"; then
-    return 0
+    kind=unpushed
+  elif gs__git "$abs" rev-parse --verify -q "refs/remotes/origin/$branch" >/dev/null; then
+    repo_commit_on_remote "$abs" "$head" && return 0
+    cur="$(repo_head "$abs")"
+    if [ -n "$cur" ] && gs__git "$abs" merge-base --is-ancestor "$head" "$cur"; then
+      kind=adopted
+    elif repo_changes_on "$abs" "$head" "refs/remotes/origin/$branch"; then
+      kind=superseded
+    elif [ "$(repo_branch "$abs")" = "$branch" ] && [ -n "$cur" ] && gs__git "$abs" merge-base --is-ancestor "$cur" "$head"; then
+      kind=adoptable
+    else
+      kind=unpushed
+    fi
+  else
+    kind=unpushed
   fi
-  printf '%s has unpushed work on %s (%s)\n' "$name" "$branch" "$(printf '%s' "$head" | cut -c1-7)"
+  printf '%s\t%s\t%s\t%s\n' "$kind" "$name" "$branch" "$short"
+}
+
+# repo_other_mac_note <id> <abs> [fetched]: the NOTES text for repo_other_mac_state, or nothing.
+repo_other_mac_note() {
+  local st kind name branch short
+  st="$(repo_other_mac_state "$@")" || return 1
+  [ -n "$st" ] || return 0
+  kind="$(gs__field "$st" 1)"; name="$(gs__field "$st" 2)"; branch="$(gs__field "$st" 3)"; short="$(gs__field "$st" 4)"
+  case "$kind" in
+    notfetched) printf '%s is on a commit not fetched here (%s); run: git-sync sync\n' "$name" "$short" ;;
+    unpushed) printf '%s has unpushed work on %s (%s)\n' "$name" "$branch" "$short" ;;
+    adoptable) printf '%s has unpushed work on %s (%s), adoptable here\n' "$name" "$branch" "$short" ;;
+    adopted) printf '%s adopted from %s, not pushed yet\n' "$short" "$name" ;;
+    superseded) printf "%s's %s is on the remote under another commit\n" "$name" "$short" ;;
+  esac
   return 0
 }

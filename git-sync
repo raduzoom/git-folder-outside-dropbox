@@ -14,7 +14,7 @@ for gs__lib in "$GS_ROOT"/lib/*.sh; do
 done
 
 gs_usage() {
-  echo "usage: git-sync <status|scan|add|remove|sync|sync-all> [args]" >&2
+  echo "usage: git-sync <status|scan|add|remove|sync|sync-all|adopt> [args]" >&2
   exit 1
 }
 
@@ -27,7 +27,7 @@ main() {
       [ -n "${1:-}" ] || gs_usage
       "$@"
       ;;
-    status|scan|add|remove|sync|sync-all)
+    status|scan|add|remove|sync|sync-all|adopt)
       fn="cmd_${cmd//-/_}"
       type "$fn" >/dev/null 2>&1 || gs_die "command not implemented yet: $cmd"
       "$fn" "$@"

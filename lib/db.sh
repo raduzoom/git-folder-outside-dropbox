@@ -96,7 +96,10 @@ state_record() {
     old="$(/usr/bin/jq -r --arg id "$id" '.repos[$id] | select(. != null) | "\(.branch)\t\(.head)"' "$f" 2>/dev/null)"
   fi
   cur="$(printf '%s\t%s' "$branch" "$head")"
-  [ "$old" = "$cur" ] && return 0
+  if [ "$old" = "$cur" ]; then
+    bundle_publish "$id" "$branch" "$head"
+    return 0
+  fi
   mkdir -p "$(dirname "$f")" || gs_die "cannot create $(dirname "$f")"
   if [ -f "$f" ] && /usr/bin/jq -e 'type == "object"' "$f" >/dev/null 2>&1; then
     out="$(cat "$f")"
@@ -106,6 +109,7 @@ state_record() {
   out="$(printf '%s' "$out" | /usr/bin/jq --arg n "$name" --arg id "$id" --arg b "$branch" --arg h "$head" --arg at "$(state__now)" '
     .name = $n | .repos = (.repos // {}) | .repos[$id] = {branch: $b, head: $h, at: $at}')" || gs_die "cannot update state file"
   printf '%s\n' "$out" | db__write "$f"
+  bundle_publish "$id" "$branch" "$head"
 }
 
 state_forget() {
@@ -134,10 +138,11 @@ state_latest_other() {
     [ -f "$f" ] || continue
     [ "$f" = "$own" ] && continue
     line="$(/usr/bin/jq -r --arg id "$id" '.name as $n | .repos[$id] | select(. != null) | "\(.at)\t\($n)\t\(.branch)\t\(.head)"' "$f" 2>/dev/null)" || continue
+    [ -z "$line" ] || line="$line$(printf '\t')$(basename "$f" .json)"
     [ -n "$line" ] || continue
     lines="$lines$line
 "
   done
   [ -n "$lines" ] || return 0
-  printf '%s' "$lines" | LC_ALL=C sort -t "$(printf '\t')" -k1,1r | head -n 1 | awk -F'\t' '{print $2 "\t" $3 "\t" $4 "\t" $1}'
+  printf '%s' "$lines" | LC_ALL=C sort -t "$(printf '\t')" -k1,1r | head -n 1 | awk -F'\t' '{print $2 "\t" $3 "\t" $4 "\t" $1 "\t" $5}'
 }
