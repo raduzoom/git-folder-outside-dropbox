@@ -22,7 +22,7 @@ Run from the `projects` folder (`~/Dropbox/hosts/devsite/projects`, or wherever 
 
 Never use VS Code's Pull / Sync Changes to catch a converted project up: Dropbox already delivered the files, so a pull trips over them. Use `git-sync sync`.
 
-To make VS Code run `git-sync sync` for a project whenever its folder opens, use the `vscode-sync-on-open` skill ([.claude/skills/vscode-sync-on-open/SKILL.md](.claude/skills/vscode-sync-on-open/SKILL.md)).
+To make VS Code run `git-sync sync` for a project whenever its folder opens, use the `vscode-sync-on-open` skill ([.claude/skills/vscode-sync-on-open/SKILL.md](.claude/skills/vscode-sync-on-open/SKILL.md)). For PhpStorm / IntelliJ IDEA, use `jetbrains-sync-on-open` ([.claude/skills/jetbrains-sync-on-open/SKILL.md](.claude/skills/jetbrains-sync-on-open/SKILL.md)).
 
 ## The Macs
 
