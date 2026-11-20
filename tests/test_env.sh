@@ -39,3 +39,17 @@ test_trash_defaults_to_trash_command() {
   PATH="$T/bin:$PATH" gs remove "$P/demo"; assert_rc 0
   assert_dir "$P/demo/.git"; assert_file "$T/trash/.git"
 }
+test_refuses_windows() {
+  make_repo demo
+  for os in MINGW64_NT-10.0-19045 MSYS_NT-10.0 CYGWIN_NT-10.0; do
+    GIT_SYNC_UNAME="$os" gs add "$P/demo"; assert_rc 1
+    assert_contains "$OUT" "macOS only"; assert_contains "$OUT" "Windows ($os)"
+  done
+  assert_dir "$P/demo/.git"
+  GIT_SYNC_UNAME=MINGW64_NT gs _call gs_data_dir; assert_rc 1
+  GIT_SYNC_UNAME=MINGW64_NT gs; assert_rc 1; assert_contains "$OUT" "macOS only"
+}
+test_refuses_linux() {
+  make_repo demo; GIT_SYNC_UNAME=Linux gs status; assert_rc 1; assert_contains "$OUT" "not on Linux"
+}
+test_runs_on_darwin() { GIT_SYNC_UNAME=Darwin gs _call gs_data_dir; assert_rc 0; assert_eq "$GIT_SYNC_DATA" "$OUT"; }

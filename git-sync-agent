@@ -150,6 +150,14 @@ cmd_status() {
   fi
 }
 
+# macOS only (launchd, and git-sync itself). GIT_SYNC_UNAME fakes `uname -s` for tests.
+os="${GIT_SYNC_UNAME:-}"
+[ -n "$os" ] || os="$(uname -s 2>/dev/null)"
+if [ "$os" != "Darwin" ]; then
+  echo "git-sync-agent: runs on macOS only, not on ${os:-an unknown system}. A Windows version is planned: plans/windows-port-handoff.md" >&2
+  exit 1
+fi
+
 case "${1:-}" in
   run) cmd_run ;;
   install) cmd_install ;;

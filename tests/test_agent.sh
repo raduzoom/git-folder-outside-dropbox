@@ -79,3 +79,10 @@ test_agent_usage() {
   "$AGENT" nonsense >/dev/null 2>&1; RC=$?; assert_rc 1
   "$AGENT" >/dev/null 2>&1; RC=$?; assert_rc 1
 }
+
+test_agent_refuses_windows() {
+  agent_setup
+  OUT="$(GIT_SYNC_UNAME=MINGW64_NT-10.0 "$AGENT" run 2>&1)"; RC=$?
+  assert_rc 1; assert_contains "$OUT" "macOS only"
+  [ ! -f "$GIT_SYNC_AGENT_LOG" ] || fail "agent ran sync-all on Windows"
+}

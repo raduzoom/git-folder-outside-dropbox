@@ -47,7 +47,7 @@ Keep this file lean: it is read every session. Status, action items, progress an
 ## Working on the code
 
 - Tests: `bash tests/run.sh` (all), `bash tests/run.sh <filter>` (substring of a test or file name). Each test runs in a temp sandbox; never point tests at real projects or `~/.git-sync`.
-- Overrides used by tests: `GIT_SYNC_DROPBOX`, `GIT_SYNC_HOME`, `GIT_SYNC_DATA`, `GIT_SYNC_MAC_NAME`, `GIT_SYNC_TRASH` (default `trash`), `GIT_SYNC_BUNDLE_MAX` (bytes, default 25 MB; `0` turns bundles off), and for the agent `GIT_SYNC_AGENT_LOG`, `GIT_SYNC_AGENT_NOTIFY`.
+- Overrides used by tests: `GIT_SYNC_DROPBOX`, `GIT_SYNC_HOME`, `GIT_SYNC_DATA`, `GIT_SYNC_MAC_NAME`, `GIT_SYNC_TRASH` (default `trash`), `GIT_SYNC_BUNDLE_MAX` (bytes, default 25 MB; `0` turns bundles off), `GIT_SYNC_UNAME` (fakes `uname -s`; anything but `Darwin` is refused by both scripts), and for the agent `GIT_SYNC_AGENT_LOG`, `GIT_SYNC_AGENT_NOTIFY`.
 - `git-sync _call <function> [args]` calls one library function (for tests and checks).
 - Rules: bash 3.2 (`/bin/bash`); never `rm`/`rmdir`/`unlink` (removals go through `$GIT_SYNC_TRASH`); never change a working file (the only project file written is `.git`); never `echo "$(cmd)"` or `local x="$(cmd)"` where cmd can fail; run `db__check` before any `db_id_by_path` lookup.
 - A conflicted copy of a ref file makes `git rev-list --all` / `--branches` fail with "bad object"; name real refs explicitly when inspecting such a repo.

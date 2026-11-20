@@ -8,6 +8,20 @@ gs_die() {
   exit 1
 }
 
+# git-sync is macOS-only. Anywhere else (Git Bash, MSYS, Cygwin, WSL, Linux) `add` and `sync`
+# would write that machine's path into the synced `.git` pointer and break git on every Mac.
+# GIT_SYNC_UNAME fakes `uname -s` for tests.
+gs_require_macos() {
+  local os="${GIT_SYNC_UNAME:-}"
+  [ -n "$os" ] || os="$(uname -s 2>/dev/null)"
+  [ "$os" = "Darwin" ] && return 0
+  case "$os" in
+    MINGW*|MSYS*|CYGWIN*|Windows*) os="Windows ($os)" ;;
+    "") os="an unknown system" ;;
+  esac
+  gs_die "runs on macOS only, not on $os. Running it here could write this machine's path into the synced .git pointers and break git on the Macs. A Windows version is planned: plans/windows-port-handoff.md"
+}
+
 # Print the physical path of an existing directory, or of a path whose parent exists.
 gs__resolve() {
   local p="$1" d b
